@@ -19,15 +19,19 @@ function Chat(){
 	this.sendLogin = function(u){
 		this.socket = io.connect('http://www.feehi.com:5000');
 		user = u;
-		this.login();
-		this.initChat();
-		this.logout();
-		this.message();
-		this.privateChat();
+		this.listen();
 		this.socket.emit('login', user);
 	}
 	this.login = function(){
 		this.socket.on("login", function(data){
+			$("#loading").remove();
+			if(data.err){
+				alert(data.err_msg);
+				$("#login").show();
+				return false;
+			}
+			$("#mask").remove();
+			$("#login").remove();
 			$("#welcome span").html('欢迎<font color="red">'+data.user.username+'</font>加入聊天室');
 			$("#welcome").css({'opacity':1});
 			setTimeout(function(){
@@ -36,7 +40,9 @@ function Chat(){
 			$("#onlineUserCount").html(data.onlineCount);
 			$("#list ul").empty();
 			for(var obj in data.onlineUsers){
-				$("#list ul").append('<li username="'+data.onlineUsers[obj].username+'" class="list-group-item">'+data.onlineUsers[obj].username+'</li>');
+				var self = '';
+				if(user.username == data.onlineUsers[obj].username) self = "active";
+				$("#list ul").append('<li username="'+data.onlineUsers[obj].username+'" class="list-group-item '+self+'">'+data.onlineUsers[obj].username+'</li>');
 			}
 			$("#list ul li").bind('click', function(){
 				var who = $(this).attr('username');
@@ -93,6 +99,7 @@ function Chat(){
 			var self = '';
 			var row = config.publicChat.replace(/%USERNAME%/, data['username']).replace(/%TIME%/, data['time']).replace(/%CONTENT%/, data['content']);
 			$(".chatlist").eq(0).append(row);
+			$("button.send").removeAttr('to');
 			var h = $(".chatlist:first").height()+$(".chatlist:first").scrollTop();
 			$(".chatlist:first").scrollTop(h);
 		})
@@ -110,6 +117,7 @@ function Chat(){
 				if( $(".tab-content #"+data.username).length>0 ){
 					$(".tab-content #"+data.username).append(row);
 					$("a[href=#"+data.username+"]").tab('show');
+					$("button.send").attr('to', data.username);
 				}else{
 					$("#chat div ul").append('<li role="presentation"><a href="#'+data.username+'" aria-controls="profile" role="tab" data-toggle="tab">与'+data.username+'聊天中</a><button type="button" class="close"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button></li>');
 					$("button.close").bind('click', function(){
@@ -134,7 +142,7 @@ $(document).ready(function(){
 	$("body").append("<div style='position:absolute;z-index:9999;background:white;width:352px;' id='login'>请输入您的昵称：<input type='text' style='width:186px' name='username'><input class='btn btn-primary' type='button' value='确定'></div>");
 	var left = ($(window).width() - $("#login").width())/2;
 	var top = ($(window).height() - $("#login").width())/2;
-	$("#login").css({"top":"-100px","left":left,"top":top});
+	$("#login").css({"left":left,"top":top});
 	var user = {"userid":1};
 	$("input[name=username]").keypress(function(e){
 		if(e.which == 13){
@@ -153,8 +161,11 @@ $(document).ready(function(){
 		}
 		chat = new Chat();
 		chat.sendLogin(user);
-		$("#mask").remove();
-		$("#login").remove();
+		$("#login").hide();
+		$("body").append("<div style='position:absolute;z-index:9999;background:white;width:352px;' id='loading'>登陆中，请稍后......</div>");
+		var left = ($(window).width() - $("#loading").width())/2;
+		var top = ($(window).height() - $("#loading").width())/2;
+		$("#loading").css({"left":left,"top":top});
 	})
 	$(document).keypress(function(e){
 		if(e.which == 13){
